@@ -31,7 +31,7 @@ for i in range(500):
         base_action, _states = base_model.predict(obs, deterministic=True)
         obs, vectorized_env = model.policy.obs_to_tensor(obs)
         mask_dist = model.policy.get_distribution(obs)
-        mask_prob = np.exp(mask_dist.log_prob(torch.Tensor(action).cuda()).detach().cpu().numpy()[0])
+        mask_prob = np.exp(mask_dist.log_prob(torch.Tensor([1]).cuda()).detach().cpu().numpy()[0])
         #print(mask_prob)
         mask_probs.append(mask_prob)
         
