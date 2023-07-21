@@ -17,10 +17,10 @@ def initialize_weights(module):
            module.bias.data.zero_()
 
 class MuJoCoStateEncoder(nn.Module):
-    def __init__(self, input_dim=11, hiddens=[500,500]):
+    def __init__(self, device, input_dim=11, hiddens=[500,500]):
 
         super(MuJoCoStateEncoder, self).__init__()
-
+        self.device = device
         self.state_encoder = nn.Sequential(nn.Linear(input_dim, 500),
                                          nn.ReLU(),
                                          nn.Linear(500, 500))
@@ -28,20 +28,27 @@ class MuJoCoStateEncoder(nn.Module):
         self.state_encoder.apply(initialize_weights)
 
     def forward(self, obs):
-        # Preprocess the observation
-        obs = np.asarray(obs)
-        obs = torch.FloatTensor(obs)
+        # # Preprocess the observation
+        # obs = np.asarray(obs)
+        # obs = torch.FloatTensor(obs).to(self.device)
 
-        # Expand dim
-        obs = torch.unsqueeze(obs, 0)
-        ret = self.state_encoder(obs)
-        ret = torch.squeeze(ret, 0)
-        return ret
+        # # Expand dim
+        # obs = torch.unsqueeze(obs, 0)
+        # ret = self.state_encoder(obs)
+        # ret = torch.squeeze(ret, 0)
+
+        # return ret
+
+        x = obs
+        state_embedding = self.state_encoder(torch.Tensor(x).to(self.device))
+
+        return state_embedding
+        
         
     def eval(self, obs):
         # Preprocess the observation
         obs = np.asarray(obs)
-        obs = torch.FloatTensor(obs)
+        obs = torch.FloatTensor(obs).to(self.device)
 
         # Expand dim
         obs = torch.unsqueeze(obs, 0)
@@ -51,20 +58,18 @@ class MuJoCoStateEncoder(nn.Module):
 
 
 class MuJoCoInverseDynamicNet(nn.Module):
-    def __init__(self, num_actions=3, input_dim=500):
+    def __init__(self, device, num_actions=3, input_dim=1000):
 
         super(MuJoCoInverseDynamicNet, self).__init__()
-
+        self.device = device
         self.inverse_net = nn.Sequential(nn.Linear(input_dim, 256),
                                          nn.ReLU(),
                                          nn.Linear(256, num_actions))
-
-
         self.inverse_net.apply(initialize_weights)
 
     def forward(self, state_embedding, next_state_embedding):
         inputs = torch.cat((state_embedding, next_state_embedding), dim=2)
-        action_logits = self.inverse_net(inputs)
+        action_logits = self.inverse_net(inputs).to(self.device)
         return action_logits.detach().numpy()
         
 

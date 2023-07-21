@@ -164,15 +164,15 @@ class PPO(OnPolicyAlgorithm):
         self.normalize_advantage = normalize_advantage
         self.target_kl = target_kl
 
-        self.feature_extractor = MuJoCoStateEncoder().to(self.device)
+        self.feature_extractor = MuJoCoStateEncoder(self.device).to(self.device)
         self.feature_extractor_optimizer = th.optim.Adam(
             self.feature_extractor.parameters(), 
             lr=1e-4)
         self.lamb = 0.01
         self.feat_sz = 500
         self.bonus_scale = 1e-4
-        self.inv_cov = self.lamb * np.identity(self.feat_sz)
-        self.inverse_net = MuJoCoInverseDynamicNet().to(self.device)
+        self.inv_cov = self.lamb * th.eye(self.feat_sz)
+        self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
         self.inverse_net_optimizer = th.optim.Adam(
             self.inverse_net.parameters(), 
             lr=1e-4)

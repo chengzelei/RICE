@@ -97,15 +97,15 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.max_grad_norm = max_grad_norm
         self.rollout_buffer = None
 
-        self.feature_extractor = MuJoCoStateEncoder().to(self.device)
+        self.feature_extractor = MuJoCoStateEncoder(self.device).to(self.device)
         self.feature_extractor_optimizer = th.optim.Adam(
             self.feature_extractor.parameters(), 
             lr=1e-4)
         self.lamb = 0.01
         self.feat_sz = 500
         self.bonus_scale = 1e-4
-        self.inv_cov = self.lamb * np.identity(self.feat_sz)
-        self.inverse_net = MuJoCoInverseDynamicNet().to(self.device)
+        self.inv_cov = self.lamb * th.eye(self.feat_sz)
+        self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
         self.inverse_net_optimizer = th.optim.Adam(
             self.inverse_net.parameters(), 
             lr=1e-4)
@@ -188,11 +188,13 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
 
             new_obs, rewards, dones, infos = env.step(clipped_actions)
-
-            feature = self.feature_extractor(new_obs).detach().numpy()
-            bonus = np.dot(np.dot(feature.T, self.inv_cov), feature)
-            u = np.dot(self.inv_cov, feature)
-            self.inv_cov -= 1/(1+bonus) * np.dot(u, u.T)
+            feature = self.feature_extractor(new_obs).squeeze().detach().cpu()
+            print(feature)
+            print(feature.shape)
+            u = th.mv(self.inv_cov, feature)
+            bonus = th.dot(feature, u).item()
+            outer_product_buffer = th.outer(u, u)
+            th.add(self.inv_cov, outer_product_buffer, alpha=-(1./(1. + bonus)), out=self.inv_cov)  
             rewards += self.bonus_scale * bonus
 
             self.num_timesteps += env.num_envs
