@@ -100,15 +100,15 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.feature_extractor = MuJoCoStateEncoder(self.device).to(self.device)
         self.feature_extractor_optimizer = th.optim.Adam(
             self.feature_extractor.parameters(), 
-            lr=1e-4)
-        self.lamb = 0.01
+            lr=1e-3)
+        self.lamb = 1e-4
         self.feat_sz = 500
-        self.bonus_scale = 1e-4
+        self.bonus_scale = 1e-6
         self.inv_cov = self.lamb * th.eye(self.feat_sz)
         self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
         self.inverse_net_optimizer = th.optim.Adam(
             self.inverse_net.parameters(), 
-            lr=1e-4)
+            lr=1e-3)
 
         if _init_setup_model:
             self._setup_model()
