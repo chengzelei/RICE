@@ -7,7 +7,7 @@ import numpy as np
 import warnings
 from collections import deque
 from stable_baselines3.common.results_plotter import load_results, ts2xy, plot_results
-from evaluation import evaluate_policy
+from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, sync_envs_normalization
 
 
@@ -233,6 +233,7 @@ class CustomCallback(BaseCallback):
               # Mean training reward over the last 100 episodes
               mean_reward = np.mean(y[-100:])
               self.logger.record("train/mean_reward", float(mean_reward))
+              print(f"episode_reward={mean_reward:.2f}")
         
         
         return True

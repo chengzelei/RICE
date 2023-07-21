@@ -11,25 +11,26 @@ from utils import gen_one_traj
 class RetrainEnv(Wrapper):
 
     def __init__(self, env, rand_sampling=False):
-
         Wrapper.__init__(self, env)
         self.env = env
         self.seed = 0
         self.random_sampling = rand_sampling
-        self.p = 0.5
-
-
+        self.p = 1
+        self.init_reward = 0
+        self.flag = False
 
     def step(self, action):
         # obtain needed information from the environment.
         obs, reward, done, info = self.env.step(action)
+        if not self.flag:
+            reward += self.init_reward
+            self.flag = True
         info["true_reward"] = reward
-
         return obs, reward, done, info
 
 
     def reset(self):
-
+        self.flag = False
         self.seed += 1
         traj = gen_one_traj(self.env, self.seed)
 
@@ -40,7 +41,9 @@ class RetrainEnv(Wrapper):
                 start_idx = np.argmax(traj.mask_probs)
         else:
             start_idx = 0
-
+        self.init_reward = traj.reward_seq[start_idx]
+        print("start idx: ", start_idx)
+        print("initial reward: ", self.init_reward)
         self.env.sim.set_state(traj.state_seq[start_idx])
         position = self.env.sim.data.qpos.flat.copy()[1:]
         velocity = self.env.sim.data.qvel.flat.copy()
@@ -53,8 +56,6 @@ class RetrainEnv(Wrapper):
         #     self.env._save_obs(i, obs)
         # return self.env._obs_from_buf()
         return obs
-
-    
 
 
 

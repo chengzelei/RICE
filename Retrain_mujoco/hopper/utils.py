@@ -10,13 +10,15 @@ class Traj:
         self.eps_len = 0
         self.act_seq = []
         self.state_seq = []
+        self.reward_seq = []
         self.mask_probs = []
         self.reward = 0
     
-    def set(self, eps_len, act_seq, state_seq, mask_probs, reward):
+    def set(self, eps_len, act_seq, state_seq, reward_seq, mask_probs, reward):
         self.eps_len = eps_len
         self.act_seq = act_seq
         self.state_seq = state_seq
+        self.reward_seq = reward_seq
         self.mask_probs = mask_probs
         self.reward = reward
 
@@ -36,6 +38,7 @@ def gen_one_traj(env, seed):
     count = 0
     action_seq = []
     state_seq = []
+    reward_seq = []
     mask_probs = []
     env.seed(seed)
     obs = env.reset()
@@ -54,14 +57,14 @@ def gen_one_traj(env, seed):
         if action == 0:
             mask_num += 1
         obs, rewards, dones, info = env.step(base_action)
-
+        
         reward += rewards
-
+        reward_seq.append(reward)
         count += 1
         if dones:
-            traj.set(count, action_seq, state_seq, mask_probs, reward)
+            traj.set(count, action_seq, state_seq, reward_seq, mask_probs, reward)
             break
-
-
+    
+    # print(reward)
 
     return traj

@@ -101,10 +101,10 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.feature_extractor_optimizer = th.optim.Adam(
             self.feature_extractor.parameters(), 
             lr=1e-3)
-        self.lamb = 1e-4
+        self.lamb = 1e-1
         self.feat_sz = 500
-        self.bonus_scale = 1e-6
-        self.inv_cov = self.lamb * th.eye(self.feat_sz)
+        self.bonus_scale = 1
+        self.inv_cov = 1/self.lamb * th.eye(self.feat_sz)
         self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
         self.inverse_net_optimizer = th.optim.Adam(
             self.inverse_net.parameters(), 
@@ -190,8 +190,10 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             new_obs, rewards, dones, infos = env.step(clipped_actions)
             feature = self.feature_extractor(new_obs).squeeze().detach().cpu()
             u = th.matmul(self.inv_cov, feature.T)
+            print(feature)
+            print(u)
             bonus = th.matmul(feature, u).numpy()
-            print(bonus)
+            print("bonus: ", bonus)
             outer_product_buffer = th.matmul(u, u.T)
             th.add(self.inv_cov, outer_product_buffer, alpha=-(1./(1. + bonus)), out=self.inv_cov)  
             rewards += self.bonus_scale * bonus

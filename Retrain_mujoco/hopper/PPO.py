@@ -172,10 +172,10 @@ class PPO(OnPolicyAlgorithm):
         self.feature_extractor_optimizer = th.optim.Adam(
             self.feature_extractor.parameters(), 
             lr=1e-3)
-        self.lamb = 1e-4
+        self.lamb = 1e-1
         self.feat_sz = 500
-        self.bonus_scale = 1e-6
-        self.inv_cov = self.lamb * th.eye(self.feat_sz)
+        self.bonus_scale = 1
+        self.inv_cov = 1/self.lamb * th.eye(self.feat_sz)
         self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
         self.inverse_net_optimizer = th.optim.Adam(
             self.inverse_net.parameters(), 
