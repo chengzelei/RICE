@@ -11,7 +11,7 @@ import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
-env = DummyVecEnv([lambda: make_retrain_env("Hopper-v3", rand_sampling=False) for _ in range(10)])
+env = DummyVecEnv([lambda: make_retrain_env("Hopper-v3", rand_sampling=False) for _ in range(1)])
 env = VecMonitor(env, "retrain_log/")
 
 eval_callback = EvalCallback(env, best_model_save_path='retrain_models/best_model',

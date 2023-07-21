@@ -189,11 +189,10 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             new_obs, rewards, dones, infos = env.step(clipped_actions)
             feature = self.feature_extractor(new_obs).squeeze().detach().cpu()
-            print(feature)
-            print(feature.shape)
-            u = th.mv(self.inv_cov, feature)
-            bonus = th.dot(feature, u).item()
-            outer_product_buffer = th.outer(u, u)
+            u = th.matmul(self.inv_cov, feature.T)
+            bonus = th.matmul(feature, u).numpy()
+            print(bonus)
+            outer_product_buffer = th.matmul(u, u.T)
             th.add(self.inv_cov, outer_product_buffer, alpha=-(1./(1. + bonus)), out=self.inv_cov)  
             rewards += self.bonus_scale * bonus
 
