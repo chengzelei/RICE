@@ -192,7 +192,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             u = th.matmul(self.inv_cov, feature.T)
             print(feature)
             print(u)
-            bonus = th.matmul(feature, u).numpy()
+            bonus = max(th.matmul(feature, u).numpy(), 0)
             print("bonus: ", bonus)
             outer_product_buffer = th.matmul(u, u.T)
             th.add(self.inv_cov, outer_product_buffer, alpha=-(1./(1. + bonus)), out=self.inv_cov)  
