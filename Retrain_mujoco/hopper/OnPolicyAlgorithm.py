@@ -105,6 +105,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.feat_sz = 500
         self.bonus_scale = 1
         self.inv_cov = 1/self.lamb * th.eye(self.feat_sz)
+        self.cov = self.lamb * th.eye(self.feat_sz)
+        self.rank1_update = False
         self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
         self.inverse_net_optimizer = th.optim.Adam(
             self.inverse_net.parameters(), 
@@ -189,13 +191,22 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             new_obs, rewards, dones, infos = env.step(clipped_actions)
             feature = self.feature_extractor(new_obs).squeeze().detach().cpu()
-            u = th.matmul(self.inv_cov, feature.T)
-            print(feature)
-            print(u)
-            bonus = max(th.matmul(feature, u).numpy(), 0)
+
+            if self.rank1_update:
+                # u = th.matmul(self.inv_cov, feature.T)
+                u = th.mv(self.inv_cov, feature)
+                # bonus = th.matmul(feature, u).numpy()
+                bonus = th.dot(feature, u).numpy()
+                outer_product_buffer = th.matmul(u, u.T)
+                th.add(self.inv_cov, outer_product_buffer, alpha=-(1./(1. + bonus)), out=self.inv_cov) 
+            else:
+                self.cov += th.outer(feature, feature) 
+                self.inv_cov = th.inverse(self.cov)
+                u = th.mv(self.inv_cov, feature)
+                bonus = th.dot(feature, u).numpy()
+            # print(feature)
+            # print(u)
             print("bonus: ", bonus)
-            outer_product_buffer = th.matmul(u, u.T)
-            th.add(self.inv_cov, outer_product_buffer, alpha=-(1./(1. + bonus)), out=self.inv_cov)  
             rewards += self.bonus_scale * bonus
 
             self.num_timesteps += env.num_envs

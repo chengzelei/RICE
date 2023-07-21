@@ -176,6 +176,8 @@ class PPO(OnPolicyAlgorithm):
         self.feat_sz = 500
         self.bonus_scale = 1
         self.inv_cov = 1/self.lamb * th.eye(self.feat_sz)
+        self.cov = self.lamb * th.eye(self.feat_sz)
+        self.rank1_update = False
         self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
         self.inverse_net_optimizer = th.optim.Adam(
             self.inverse_net.parameters(), 
@@ -221,7 +223,6 @@ class PPO(OnPolicyAlgorithm):
             approx_kl_divs = []
             # Do a complete pass on the rollout buffer
             for rollout_data in self.rollout_buffer.get(self.batch_size):
-                print("mean reward: ", np.mean(rollout_data.rewards))
                 actions = rollout_data.actions
                 if isinstance(self.action_space, spaces.Discrete):
                     # Convert discrete action from float to long
@@ -307,6 +308,8 @@ class PPO(OnPolicyAlgorithm):
                 pred_actions = self.inverse_net(curr_states_embedding, next_states_embedding)
                 true_actions = actions[1:]
                 dynamic_loss = compute_inverse_dynamics_loss(pred_actions, true_actions)
+                print("Dynamic prediction loss:")
+                print(dynamic_loss)
                 self.feature_extractor_optimizer.zero_grad()
                 self.inverse_net_optimizer.zero_grad()
                 dynamic_loss.backward()

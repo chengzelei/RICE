@@ -23,7 +23,7 @@ class RetrainEnv(Wrapper):
         # obtain needed information from the environment.
         obs, reward, done, info = self.env.step(action)
         if not self.flag:
-            reward += self.init_reward
+            info["true_reward"] = self.init_reward + reward
             self.flag = True
         info["true_reward"] = reward
         return obs, reward, done, info

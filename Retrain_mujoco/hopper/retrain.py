@@ -5,6 +5,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from PPO import PPO
 from environment import make_retrain_env
 from callback import CustomCallback
+#from stable_baselines3.common.vec_env.vec_monitor import VecMonitor
 from monitor import VecMonitor
 from stable_baselines3.common.callbacks import CallbackList
 import os
