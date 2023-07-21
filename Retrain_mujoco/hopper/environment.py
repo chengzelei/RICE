@@ -28,7 +28,6 @@ class RetrainEnv(Wrapper):
         return obs, reward, done, info
 
 
-
     def reset(self):
 
         self.seed += 1
@@ -41,13 +40,20 @@ class RetrainEnv(Wrapper):
                 start_idx = np.argmax(traj.mask_probs)
         else:
             start_idx = 0
-        
+
         self.env.sim.set_state(traj.state_seq[start_idx])
         position = self.env.sim.data.qpos.flat.copy()[1:]
         velocity = self.env.sim.data.qvel.flat.copy()
-
         obs = np.concatenate((position, velocity)).ravel()
+        # for i in range(self.env.num_envs):
+        #     self.env.envs[i].sim.set_state(traj.state_seq[start_idx])
+        #     position = self.env.envs[i].sim.data.qpos.flat.copy()[1:]
+        #     velocity = self.env.envs[i].sim.data.qvel.flat.copy()
+        #     obs = np.concatenate((position, velocity)).ravel()
+        #     self.env._save_obs(i, obs)
+        # return self.env._obs_from_buf()
         return obs
+
     
 
 

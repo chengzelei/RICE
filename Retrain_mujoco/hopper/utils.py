@@ -25,13 +25,11 @@ def gen_one_traj(env, seed):
     traj = Traj()
     model = PPO.load("/home/zck7060/Retrain_mujoco/hopper/masknet/models/best_model/best_model")
 
-    env = DummyVecEnv([lambda: env])
-    env = VecMonitor(env, "models/")
     # eval_env = VecNormalize(env, norm_obs=True, norm_reward=False,
     #                    clip_obs=10.)
     #reward_vec, length_vec = evaluate_policy(model, env,  n_eval_episodes=500, return_episode_rewards=True)
 
-    base_model = PPO.load("/home/zck7060/Retrain_mujoco/hopper/baseline/models/best_model/best_model")
+    base_model = PPO.load("/home/zck7060/Retrain_mujoco/hopper/baseline/tmp/best_model/best_model")
 
     reward = 0
     mask_num = 0
@@ -57,7 +55,7 @@ def gen_one_traj(env, seed):
             mask_num += 1
         obs, rewards, dones, info = env.step(base_action)
 
-        reward += rewards[0]
+        reward += rewards
 
         count += 1
         if dones:

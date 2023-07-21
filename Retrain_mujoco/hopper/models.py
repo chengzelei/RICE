@@ -51,7 +51,7 @@ class MuJoCoStateEncoder(nn.Module):
 
 
 class MuJoCoInverseDynamicNet(nn.Module):
-    def __init__(self, num_actions, input_dim=500):
+    def __init__(self, num_actions=3, input_dim=500):
 
         super(MuJoCoInverseDynamicNet, self).__init__()
 
