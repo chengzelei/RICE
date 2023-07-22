@@ -28,5 +28,5 @@ log_dir = "weak_retrain_models/"
 custom_objects = { 'learning_rate': 1e-4}
 model = PPO.load("/home/zck7060/Retrain_mujoco/hopper/baseline/weak_tmp/best_model/best_model", env = env, custom_objects=custom_objects, tensorboard_log="weak_retrain_log/")
 
-model.learn(total_timesteps=1e6, callback=callback)
+model.learn(total_timesteps=1e5, callback=callback)
 
