@@ -15,7 +15,7 @@ class RetrainEnv(Wrapper):
         self.env = env
         self.seed = 0
         self.random_sampling = rand_sampling
-        self.p = 1
+        self.p = 0
         self.init_reward = 0
         self.flag = False
 
@@ -25,7 +25,8 @@ class RetrainEnv(Wrapper):
         if not self.flag:
             info["true_reward"] = self.init_reward + reward
             self.flag = True
-        info["true_reward"] = reward
+        else:
+            info["true_reward"] = reward
         return obs, reward, done, info
 
 
@@ -42,8 +43,6 @@ class RetrainEnv(Wrapper):
         else:
             start_idx = 0
         self.init_reward = traj.reward_seq[start_idx]
-        print("start idx: ", start_idx)
-        print("initial reward: ", self.init_reward)
         self.env.sim.set_state(traj.state_seq[start_idx])
         position = self.env.sim.data.qpos.flat.copy()[1:]
         velocity = self.env.sim.data.qvel.flat.copy()
