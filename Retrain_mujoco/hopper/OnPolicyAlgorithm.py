@@ -206,7 +206,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 bonus = th.dot(feature, u).numpy()
             # print(feature)
             # print(u)
-            print("bonus: ", bonus)
+            #print("bonus: ", bonus)
             rewards += self.bonus_scale * bonus
 
             self.num_timesteps += env.num_envs
