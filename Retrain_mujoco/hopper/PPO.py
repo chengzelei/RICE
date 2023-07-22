@@ -23,7 +23,7 @@ def compute_inverse_dynamics_loss(pred_actions, true_actions):
         F.log_softmax(th.flatten(pred_actions, 0, 1), dim=-1), 
         target=th.flatten(true_actions, 0, 1), 
         reduction='none')
-    return th.sum(th.mean(inverse_dynamics_loss, dim=1))
+    return th.sum(th.mean(inverse_dynamics_loss))
 
 class PPO(OnPolicyAlgorithm):
     """

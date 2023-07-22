@@ -68,8 +68,8 @@ class MuJoCoInverseDynamicNet(nn.Module):
         self.inverse_net.apply(initialize_weights)
 
     def forward(self, state_embedding, next_state_embedding):
-        inputs = torch.cat((state_embedding, next_state_embedding), dim=2)
+        inputs = torch.cat((state_embedding, next_state_embedding), dim=1)
         action_logits = self.inverse_net(inputs).to(self.device)
-        return action_logits.detach().numpy()
+        return action_logits
         
 
