@@ -190,24 +190,25 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
 
             new_obs, rewards, dones, infos = env.step(clipped_actions)
-            feature = self.feature_extractor(new_obs).squeeze().detach().cpu()
 
-            if self.rank1_update:
-                # u = th.matmul(self.inv_cov, feature.T)
-                u = th.mv(self.inv_cov, feature)
-                # bonus = th.matmul(feature, u).numpy()
-                bonus = th.dot(feature, u).numpy()
-                outer_product_buffer = th.matmul(u, u.T)
-                th.add(self.inv_cov, outer_product_buffer, alpha=-(1./(1. + bonus)), out=self.inv_cov) 
-            else:
-                self.cov += th.outer(feature, feature) 
-                self.inv_cov = th.inverse(self.cov)
-                u = th.mv(self.inv_cov, feature)
-                bonus = th.dot(feature, u).numpy()
-            # print(feature)
-            # print(u)
-            #print("bonus: ", bonus)
-            rewards += self.bonus_scale * bonus
+            for i in range(len(new_obs)):
+                feature = self.feature_extractor(new_obs[i]).squeeze().detach().cpu()
+
+                if self.rank1_update:
+                    # u = th.matmul(self.inv_cov, feature.T)
+                    u = th.mv(self.inv_cov, feature)
+                    # bonus = th.matmul(feature, u).numpy()
+                    bonus = th.dot(feature, u).numpy()
+                    outer_product_buffer = th.matmul(u, u.T)
+                    th.add(self.inv_cov, outer_product_buffer, alpha=-(1./(1. + bonus)), out=self.inv_cov) 
+                else:
+                    self.cov += th.outer(feature, feature) 
+                    self.inv_cov = th.inverse(self.cov)
+                    u = th.mv(self.inv_cov, feature)
+                    bonus = th.dot(feature, u).numpy()
+                rewards[i] += self.bonus_scale * bonus
+
+            # rewards += self.bonus_scale * bonus
 
             self.num_timesteps += env.num_envs
 

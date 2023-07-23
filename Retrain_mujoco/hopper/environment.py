@@ -15,7 +15,7 @@ class RetrainEnv(Wrapper):
         self.env = env
         self.seed = 0
         self.random_sampling = rand_sampling
-        self.p = 0
+        self.p = 0.5
         self.init_reward = 0
         self.flag = False
 

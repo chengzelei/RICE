@@ -171,17 +171,17 @@ class PPO(OnPolicyAlgorithm):
         self.feature_extractor = MuJoCoStateEncoder(self.device).to(self.device)
         self.feature_extractor_optimizer = th.optim.Adam(
             self.feature_extractor.parameters(), 
-            lr=1e-3)
+            lr=1e-4)
         self.lamb = 1e-1
         self.feat_sz = 500
-        self.bonus_scale = 1
+        self.bonus_scale = 1e-1
         self.inv_cov = 1/self.lamb * th.eye(self.feat_sz)
         self.cov = self.lamb * th.eye(self.feat_sz)
         self.rank1_update = False
         self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
         self.inverse_net_optimizer = th.optim.Adam(
             self.inverse_net.parameters(), 
-            lr=1e-3)
+            lr=1e-4)
 
 
         if _init_setup_model:
@@ -308,8 +308,6 @@ class PPO(OnPolicyAlgorithm):
                 pred_actions = self.inverse_net(curr_states_embedding, next_states_embedding)
                 true_actions = actions[1:]
                 dynamic_loss = compute_inverse_dynamics_loss(pred_actions, true_actions)
-                print("Dynamic prediction loss:")
-                print(dynamic_loss)
                 self.feature_extractor_optimizer.zero_grad()
                 self.inverse_net_optimizer.zero_grad()
                 dynamic_loss.backward()
