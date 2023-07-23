@@ -97,6 +97,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.max_grad_norm = max_grad_norm
         self.rollout_buffer = None
 
+        # init bonus related
         self.feature_extractor = MuJoCoStateEncoder(self.device).to(self.device)
         self.feature_extractor_optimizer = th.optim.Adam(
             self.feature_extractor.parameters(), 
@@ -190,6 +191,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             new_obs, rewards, dones, infos = env.step(clipped_actions)
 
+
+            # add elliptical bonus
             for i in range(len(new_obs)):
                 feature = self.feature_extractor(new_obs[i]).squeeze().detach().cpu()
 

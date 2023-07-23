@@ -47,13 +47,6 @@ class RetrainEnv(Wrapper):
         position = self.env.sim.data.qpos.flat.copy()[1:]
         velocity = self.env.sim.data.qvel.flat.copy()
         obs = np.concatenate((position, velocity)).ravel()
-        # for i in range(self.env.num_envs):
-        #     self.env.envs[i].sim.set_state(traj.state_seq[start_idx])
-        #     position = self.env.envs[i].sim.data.qpos.flat.copy()[1:]
-        #     velocity = self.env.envs[i].sim.data.qvel.flat.copy()
-        #     obs = np.concatenate((position, velocity)).ravel()
-        #     self.env._save_obs(i, obs)
-        # return self.env._obs_from_buf()
         return obs
 
 

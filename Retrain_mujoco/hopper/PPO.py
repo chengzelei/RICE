@@ -168,6 +168,7 @@ class PPO(OnPolicyAlgorithm):
         self.normalize_advantage = normalize_advantage
         self.target_kl = target_kl
 
+        # init bonus related
         self.feature_extractor = MuJoCoStateEncoder(self.device).to(self.device)
         self.feature_extractor_optimizer = th.optim.Adam(
             self.feature_extractor.parameters(), 
