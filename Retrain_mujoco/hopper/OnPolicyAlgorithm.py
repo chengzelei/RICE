@@ -120,7 +120,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.set_random_seed(self.seed)
 
         buffer_cls = DictRolloutBuffer if isinstance(self.observation_space, spaces.Dict) else RolloutBuffer
-
         self.rollout_buffer = buffer_cls(
             self.n_steps,
             self.observation_space,
