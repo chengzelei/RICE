@@ -172,16 +172,19 @@ class PPO(OnPolicyAlgorithm):
         self.feature_extractor_optimizer = th.optim.Adam(
             self.feature_extractor.parameters(), 
             lr=1e-4)
-        self.lamb = 1e-1
-        self.feat_sz = 500
-        self.bonus_scale = 1e-1
-        self.inv_cov = 1/self.lamb * th.eye(self.feat_sz)
-        self.cov = self.lamb * th.eye(self.feat_sz)
-        self.rank1_update = False
         self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
         self.inverse_net_optimizer = th.optim.Adam(
             self.inverse_net.parameters(), 
             lr=1e-4)
+        
+        self.lamb = 1e-1
+        self.feat_sz = 500
+        self.bonus_scale = 1e-1
+        self.dynamic_coeff = 1
+        self.inv_cov = 1/self.lamb * th.eye(self.feat_sz)
+        self.cov = self.lamb * th.eye(self.feat_sz)
+        self.rank1_update = False
+
 
 
         if _init_setup_model:
@@ -275,7 +278,17 @@ class PPO(OnPolicyAlgorithm):
 
                 entropy_losses.append(entropy_loss.item())
 
-                loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
+
+                #feature learning loss
+                states = rollout_data.observations
+                states_embedding = self.feature_extractor(states)
+                curr_states_embedding = states_embedding[:-1]
+                next_states_embedding = states_embedding[1:]
+                pred_actions = self.inverse_net(curr_states_embedding, next_states_embedding)
+                true_actions = actions[1:]
+                dynamic_loss = compute_inverse_dynamics_loss(pred_actions, true_actions)
+
+                loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + self.dynamic_coeff * dynamic_loss
 
                 # Calculate approximate form of reverse KL Divergence for early stopping
                 # see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417
@@ -294,23 +307,12 @@ class PPO(OnPolicyAlgorithm):
 
                 # Optimization step
                 self.policy.optimizer.zero_grad()
+                self.feature_extractor_optimizer.zero_grad()
+                self.inverse_net_optimizer.zero_grad()
                 loss.backward()
                 # Clip grad norm
                 th.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
                 self.policy.optimizer.step()
-
-
-                #feature learning loss
-                states = rollout_data.observations
-                states_embedding = self.feature_extractor(states)
-                curr_states_embedding = states_embedding[:-1]
-                next_states_embedding = states_embedding[1:]
-                pred_actions = self.inverse_net(curr_states_embedding, next_states_embedding)
-                true_actions = actions[1:]
-                dynamic_loss = compute_inverse_dynamics_loss(pred_actions, true_actions)
-                self.feature_extractor_optimizer.zero_grad()
-                self.inverse_net_optimizer.zero_grad()
-                dynamic_loss.backward()
                 self.feature_extractor_optimizer.step()
                 self.inverse_net_optimizer.step()
 
