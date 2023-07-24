@@ -10,17 +10,18 @@ from utils import gen_one_traj
 
 class RetrainEnv(Wrapper):
 
-    def __init__(self, env, rand_sampling=False):
+    def __init__(self, env, go_prob, agent_path, masknet_path, rand_sampling=False):
         Wrapper.__init__(self, env)
         self.env = env
         self.seed = 0
         self.random_sampling = rand_sampling
-        self.p = 0.5
+        self.p = go_prob
         self.init_reward = 0
         self.flag = False
+        self.agent_path = agent_path
+        self.masknet_path = masknet_path
 
     def step(self, action):
-        # obtain needed information from the environment.
         obs, reward, done, info = self.env.step(action)
         if not self.flag:
             info["true_reward"] = self.init_reward + reward
@@ -33,7 +34,7 @@ class RetrainEnv(Wrapper):
     def reset(self):
         self.flag = False
         self.seed += 1
-        traj = gen_one_traj(self.env, self.seed)
+        traj = gen_one_traj(self.env, self.seed, self.agent_path, self.masknet_path)
 
         if np.random.rand() > self.p:
             if self.random_sampling:
@@ -51,7 +52,7 @@ class RetrainEnv(Wrapper):
 
 
 
-def make_retrain_env(env_name, rand_sampling=False):
+def make_retrain_env(env_name, go_prob, agent_path, masknet_path, rand_sampling=False):
     env = gym.make(env_name)
-    return RetrainEnv(env, rand_sampling=False)
+    return RetrainEnv(env, go_prob, agent_path, masknet_path, rand_sampling=rand_sampling)
 

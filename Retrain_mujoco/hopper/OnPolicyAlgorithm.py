@@ -6,7 +6,7 @@ import numpy as np
 import torch as th
 from gym import spaces
 
-from stable_baselines3.common.base_class import BaseAlgorithm
+from base_class import BaseAlgorithm
 from stable_baselines3.common.buffers import DictRolloutBuffer, RolloutBuffer
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.policies import ActorCriticPolicy
@@ -20,37 +20,6 @@ SelfOnPolicyAlgorithm = TypeVar("SelfOnPolicyAlgorithm", bound="OnPolicyAlgorith
 
 
 class OnPolicyAlgorithm(BaseAlgorithm):
-    """
-    The base for On-Policy algorithms (ex: A2C/PPO).
-
-    :param policy: The policy model to use (MlpPolicy, CnnPolicy, ...)
-    :param env: The environment to learn from (if registered in Gym, can be str)
-    :param learning_rate: The learning rate, it can be a function
-        of the current progress remaining (from 1 to 0)
-    :param n_steps: The number of steps to run for each environment per update
-        (i.e. batch size is n_steps * n_env where n_env is number of environment copies running in parallel)
-    :param gamma: Discount factor
-    :param gae_lambda: Factor for trade-off of bias vs variance for Generalized Advantage Estimator.
-        Equivalent to classic advantage when set to 1.
-    :param ent_coef: Entropy coefficient for the loss calculation
-    :param vf_coef: Value function coefficient for the loss calculation
-    :param max_grad_norm: The maximum value for the gradient clipping
-    :param use_sde: Whether to use generalized State Dependent Exploration (gSDE)
-        instead of action noise exploration (default: False)
-    :param sde_sample_freq: Sample a new noise matrix every n steps when using gSDE
-        Default: -1 (only sample at the beginning of the rollout)
-    :param tensorboard_log: the log location for tensorboard (if None, no logging)
-    :param monitor_wrapper: When creating an environment, whether to wrap it
-        or not in a Monitor wrapper.
-    :param policy_kwargs: additional arguments to be passed to the policy on creation
-    :param verbose: Verbosity level: 0 for no output, 1 for info messages (such as device or wrappers used), 2 for
-        debug messages
-    :param seed: Seed for the pseudo random generators
-    :param device: Device (cpu, cuda, ...) on which the code should be run.
-        Setting it to auto, the code will be run on the GPU if possible.
-    :param _init_setup_model: Whether or not to build the network at the creation of the instance
-    :param supported_action_spaces: The action spaces supported by the algorithm.
-    """
 
     def __init__(
         self,
@@ -91,7 +60,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             tensorboard_log=tensorboard_log,
             supported_action_spaces=supported_action_spaces,
         )
-  
+   
         self.n_steps = n_steps
         self.gamma = gamma
         self.gae_lambda = gae_lambda
@@ -99,30 +68,32 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.vf_coef = vf_coef
         self.max_grad_norm = max_grad_norm
         self.rollout_buffer = None
-
-        # init e3b bonus related
-        self.feature_extractor = MuJoCoStateEncoder(self.device).to(self.device)
-        self.feature_extractor_optimizer = th.optim.Adam(
-            self.feature_extractor.parameters(), 
-            lr=1e-3)
-        self.lamb = 1e-1
-        self.feat_sz = 500
         self.bonus = bonus
-        self.bonus_scale = bonus_scale,
-        self.inv_cov = th.mul(th.eye(self.feat_sz), 1.0/self.lamb)
-        self.cov = th.mul(th.eye(self.feat_sz), self.lamb)
-        self.rank1_update = False
-        self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
-        self.inverse_net_optimizer = th.optim.Adam(
-            self.inverse_net.parameters(), 
-            lr=1e-3)
-        
-        # init rnd bonus related
-        obs_shape = self.observation_space.shape
-        self.obs_rms = RunningMeanStd(shape = obs_shape)
+        self.bonus_scale = bonus_scale
 
-        input_dim, output_dim = obs_shape[0], 64
-        self.rnd_model = RNDModel(self.device, input_dim, output_dim).to(self.device)
+        if self.bonus == 'e3b':
+            # init e3b bonus related
+            self.feature_extractor = MuJoCoStateEncoder(self.device).to(self.device)
+            self.feature_extractor_optimizer = th.optim.Adam(
+                self.feature_extractor.parameters(), 
+                lr=1e-3)
+            self.lamb = 1e-1
+            self.feat_sz = 500
+            self.inv_cov = th.mul(th.eye(self.feat_sz), 1.0/self.lamb)
+            self.cov = th.mul(th.eye(self.feat_sz), self.lamb)
+            self.rank1_update = False
+            self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
+            self.inverse_net_optimizer = th.optim.Adam(
+                self.inverse_net.parameters(), 
+                lr=1e-3)
+
+        elif self.bonus == 'rnd':
+            # init rnd bonus related
+            obs_shape = self.observation_space.shape
+            self.obs_rms = RunningMeanStd(shape = obs_shape)
+
+            input_dim, output_dim = obs_shape[0], 64
+            self.rnd_model = RNDModel(self.device, input_dim, output_dim).to(self.device)
 
         if _init_setup_model:
             self._setup_model()
@@ -141,12 +112,12 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             gae_lambda=self.gae_lambda,
             n_envs=self.n_envs,
         )
-        self.policy = self.policy_class(  # pytype:disable=not-instantiable
+        self.policy = self.policy_class(  
             self.observation_space,
             self.action_space,
             self.lr_schedule,
             use_sde=self.use_sde,
-            **self.policy_kwargs  # pytype:disable=not-instantiable
+            **self.policy_kwargs  
         )
         self.policy = self.policy.to(self.device)
 
@@ -158,46 +129,31 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         rollout_buffer: RolloutBuffer,
         n_rollout_steps: int,
     ) -> bool:
-        """
-        Collect experiences using the current policy and fill a ``RolloutBuffer``.
-        The term rollout here refers to the model-free notion and should not
-        be used with the concept of rollout used in model-based RL or planning.
 
-        :param env: The training environment
-        :param callback: Callback that will be called at each step
-            (and at the beginning and end of the rollout)
-        :param rollout_buffer: Buffer to fill with rollouts
-        :param n_rollout_steps: Number of experiences to collect per environment
-        :return: True if function returned with at least `n_rollout_steps`
-            collected, False if callback terminated rollout prematurely.
-        """
         assert self._last_obs is not None, "No previous observation was provided"
-        # Switch to eval mode (this affects batch norm / dropout)
+
         self.policy.set_training_mode(False)
 
         n_steps = 0
         rollout_buffer.reset()
-        # Sample new weights for the state dependent exploration
         if self.use_sde:
             self.policy.reset_noise(env.num_envs)
 
         callback.on_rollout_start()
         total_next_obs = []
+        bonuses = []
+
 
         while n_steps < n_rollout_steps:
             if self.use_sde and self.sde_sample_freq > 0 and n_steps % self.sde_sample_freq == 0:
-                # Sample a new noise matrix
                 self.policy.reset_noise(env.num_envs)
 
             with th.no_grad():
-                # Convert to pytorch tensor or to TensorDict
                 obs_tensor = obs_as_tensor(self._last_obs, self.device)
                 actions, values, log_probs = self.policy(obs_tensor)
             actions = actions.cpu().numpy()
-
-            # Rescale and perform action
             clipped_actions = actions
-            # Clip the actions to avoid out of bound error
+
             if isinstance(self.action_space, spaces.Box):
                 clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
 
@@ -209,9 +165,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                     feature = self.feature_extractor(new_obs[i]).squeeze().detach().cpu()
 
                     if self.rank1_update:
-                        # u = th.matmul(self.inv_cov, feature.T)
                         u = th.mv(self.inv_cov, feature)
-                        # bonus = th.matmul(feature, u).numpy()
                         bonus = th.dot(feature, u).numpy()
                         outer_product_buffer = th.matmul(u, u.T)
                         th.add(self.inv_cov, outer_product_buffer, alpha=-(1./(1. + bonus)), out=self.inv_cov) 
@@ -220,6 +174,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                         self.inv_cov = th.inverse(self.cov)
                         u = th.mv(self.inv_cov, feature)
                         bonus = th.dot(feature, u).numpy()
+                    bonuses.append(bonus)
                     rewards[i] += self.bonus_scale * bonus
             
             elif self.bonus == 'rnd':
@@ -227,11 +182,11 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 # add rnd bonus
                 new_norm_obs =  ((new_obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var)).clip(-5, 5)
                 int_rewards = self.rnd_model.compute_bonus(new_norm_obs)
+                bonuses.append(np.mean(int_rewards))
                 rewards = rewards + self.bonus_scale * int_rewards
 
             self.num_timesteps += env.num_envs
 
-            # Give access to local variables
             callback.update_locals(locals())
             if callback.on_step() is False:
                 return False
@@ -240,11 +195,9 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             n_steps += 1
 
             if isinstance(self.action_space, spaces.Discrete):
-                # Reshape in case of discrete action
                 actions = actions.reshape(-1, 1)
 
-            # Handle timeout by bootstraping with value function
-            # see GitHub issue #633
+
             for idx, done in enumerate(dones):
                 if (
                     done
@@ -261,7 +214,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self._last_episode_starts = dones
 
         with th.no_grad():
-            # Compute value for the last timestep
             values = self.policy.predict_values(obs_as_tensor(new_obs, self.device))
 
         rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
@@ -273,13 +225,9 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             total_next_obs = np.vstack(total_next_obs)
             self.obs_rms.update(total_next_obs)
 
-        return True
+        return True, bonuses
 
     def train(self) -> None:
-        """
-        Consume current rollout data and update policy parameters.
-        Implemented by individual algorithms.
-        """
         raise NotImplementedError
 
     def learn(
@@ -305,7 +253,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         while self.num_timesteps < total_timesteps:
 
-            continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
+            continue_training, bonuses = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
 
             if continue_training is False:
                 break
@@ -324,6 +272,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 self.logger.record("time/fps", fps)
                 self.logger.record("time/time_elapsed", int(time_elapsed), exclude="tensorboard")
                 self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
+                self.logger.record("rollout/bonus", np.mean(bonuses))
                 self.logger.dump(step=self.num_timesteps)
 
             self.train()

@@ -8,18 +8,6 @@ from stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvObs, Vec
 
 
 class VecMonitor(VecEnvWrapper):
-    """
-    A vectorized monitor wrapper for *vectorized* Gym environments,
-    it is used to record the episode reward, length, time and other data.
-    Some environments like `openai/procgen <https://github.com/openai/procgen>`_
-    or `gym3 <https://github.com/openai/gym3>`_ directly initialize the
-    vectorized environments, without giving us a chance to use the ``Monitor``
-    wrapper. So this class simply does the job of the ``Monitor`` wrapper on
-    a vectorized level.
-    :param venv: The vectorized environment
-    :param filename: the location to save a log file, can be None for no log
-    :param info_keywords: extra information to log, from the information return of env.step()
-    """
 
     def __init__(
         self,
@@ -27,12 +15,7 @@ class VecMonitor(VecEnvWrapper):
         filename: Optional[str] = None,
         info_keywords: Tuple[str, ...] = (),
     ):
-        # Avoid circular import
         from stable_baselines3.common.monitor import Monitor, ResultsWriter
-
-        # This check is not valid for special `VecEnv`
-        # like the ones created by Procgen, that does follow completely
-        # the `VecEnv` interface
         try:
             is_wrapped_with_monitor = venv.env_is_wrapped(Monitor)[0]
         except AttributeError:
