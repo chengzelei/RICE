@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.nn import init
 
 def initialize_weights(module):
     if isinstance(module, nn.Conv2d):
@@ -72,4 +73,47 @@ class MuJoCoInverseDynamicNet(nn.Module):
         action_logits = self.inverse_net(inputs).to(self.device)
         return action_logits
         
+class RNDModel(nn.Module):
+    def __init__(self, device, input_size, output_size):
+        super(RNDModel, self).__init__()
+        self.device = device
+        self.input_size = input_size
+        self.output_size = output_size
 
+        self.predictor = nn.Sequential(
+            nn.Linear(input_size, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Linear(128, output_size)
+        )
+
+        self.target = nn.Sequential(
+            nn.Linear(input_size, 128),
+            nn.ReLU(),
+            nn.Linear(128, output_size)
+        )
+
+        # Initialize weights    
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                init.orthogonal_(m.weight, np.sqrt(2))
+                m.bias.data.zero_()
+
+        # Set target parameters as untrainable
+        for param in self.target.parameters():
+            param.requires_grad = False
+
+    def forward(self, next_obs):
+        target_feature = self.target(next_obs)
+        predict_feature = self.predictor(next_obs)
+
+        return predict_feature, target_feature
+
+    def compute_bonus(self, next_obs):
+        next_obs = torch.FloatTensor(next_obs).to(self.device)
+        target_next_feature = self.target(next_obs)
+        predict_next_feature = self.predictor(next_obs)
+        intrinsic_reward = (target_next_feature - predict_next_feature).pow(2).sum(1) / 2
+
+        return intrinsic_reward.data.cpu().numpy()

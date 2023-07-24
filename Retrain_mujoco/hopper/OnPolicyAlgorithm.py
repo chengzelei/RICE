@@ -13,7 +13,8 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
 from stable_baselines3.common.utils import obs_as_tensor, safe_mean
 from stable_baselines3.common.vec_env import VecEnv
-from models import MuJoCoStateEncoder, MuJoCoInverseDynamicNet
+from utils import RunningMeanStd
+from models import MuJoCoStateEncoder, MuJoCoInverseDynamicNet, RNDModel
 
 SelfOnPolicyAlgorithm = TypeVar("SelfOnPolicyAlgorithm", bound="OnPolicyAlgorithm")
 
@@ -64,6 +65,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         max_grad_norm: float,
         use_sde: bool,
         sde_sample_freq: int,
+        bonus: Union[None, str] = None,
+        bonus_scale: float = 1,
         tensorboard_log: Optional[str] = None,
         monitor_wrapper: bool = True,
         policy_kwargs: Optional[Dict[str, Any]] = None,
@@ -88,7 +91,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             tensorboard_log=tensorboard_log,
             supported_action_spaces=supported_action_spaces,
         )
-
+  
         self.n_steps = n_steps
         self.gamma = gamma
         self.gae_lambda = gae_lambda
@@ -97,21 +100,29 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.max_grad_norm = max_grad_norm
         self.rollout_buffer = None
 
-        # init bonus related
+        # init e3b bonus related
         self.feature_extractor = MuJoCoStateEncoder(self.device).to(self.device)
         self.feature_extractor_optimizer = th.optim.Adam(
             self.feature_extractor.parameters(), 
             lr=1e-3)
         self.lamb = 1e-1
         self.feat_sz = 500
-        self.bonus_scale = 1
-        self.inv_cov = 1/self.lamb * th.eye(self.feat_sz)
-        self.cov = self.lamb * th.eye(self.feat_sz)
+        self.bonus = bonus
+        self.bonus_scale = bonus_scale,
+        self.inv_cov = th.mul(th.eye(self.feat_sz), 1.0/self.lamb)
+        self.cov = th.mul(th.eye(self.feat_sz), self.lamb)
         self.rank1_update = False
         self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
         self.inverse_net_optimizer = th.optim.Adam(
             self.inverse_net.parameters(), 
             lr=1e-3)
+        
+        # init rnd bonus related
+        obs_shape = self.observation_space.shape
+        self.obs_rms = RunningMeanStd(shape = obs_shape)
+
+        input_dim, output_dim = obs_shape[0], 64
+        self.rnd_model = RNDModel(self.device, input_dim, output_dim).to(self.device)
 
         if _init_setup_model:
             self._setup_model()
@@ -171,6 +182,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.policy.reset_noise(env.num_envs)
 
         callback.on_rollout_start()
+        total_next_obs = []
 
         while n_steps < n_rollout_steps:
             if self.use_sde and self.sde_sample_freq > 0 and n_steps % self.sde_sample_freq == 0:
@@ -191,26 +203,31 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             new_obs, rewards, dones, infos = env.step(clipped_actions)
 
+            if self.bonus == 'e3b':
+                # add elliptical bonus
+                for i in range(len(new_obs)):
+                    feature = self.feature_extractor(new_obs[i]).squeeze().detach().cpu()
 
-            # add elliptical bonus
-            for i in range(len(new_obs)):
-                feature = self.feature_extractor(new_obs[i]).squeeze().detach().cpu()
-
-                if self.rank1_update:
-                    # u = th.matmul(self.inv_cov, feature.T)
-                    u = th.mv(self.inv_cov, feature)
-                    # bonus = th.matmul(feature, u).numpy()
-                    bonus = th.dot(feature, u).numpy()
-                    outer_product_buffer = th.matmul(u, u.T)
-                    th.add(self.inv_cov, outer_product_buffer, alpha=-(1./(1. + bonus)), out=self.inv_cov) 
-                else:
-                    self.cov += th.outer(feature, feature) 
-                    self.inv_cov = th.inverse(self.cov)
-                    u = th.mv(self.inv_cov, feature)
-                    bonus = th.dot(feature, u).numpy()
-                rewards[i] += self.bonus_scale * bonus
-
-            # rewards += self.bonus_scale * bonus
+                    if self.rank1_update:
+                        # u = th.matmul(self.inv_cov, feature.T)
+                        u = th.mv(self.inv_cov, feature)
+                        # bonus = th.matmul(feature, u).numpy()
+                        bonus = th.dot(feature, u).numpy()
+                        outer_product_buffer = th.matmul(u, u.T)
+                        th.add(self.inv_cov, outer_product_buffer, alpha=-(1./(1. + bonus)), out=self.inv_cov) 
+                    else:
+                        self.cov += th.outer(feature, feature) 
+                        self.inv_cov = th.inverse(self.cov)
+                        u = th.mv(self.inv_cov, feature)
+                        bonus = th.dot(feature, u).numpy()
+                    rewards[i] += self.bonus_scale * bonus
+            
+            elif self.bonus == 'rnd':
+                total_next_obs.append(new_obs)
+                # add rnd bonus
+                new_norm_obs =  ((new_obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var)).clip(-5, 5)
+                int_rewards = self.rnd_model.compute_bonus(new_norm_obs)
+                rewards = rewards + self.bonus_scale * int_rewards
 
             self.num_timesteps += env.num_envs
 
@@ -250,6 +267,11 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
 
         callback.on_rollout_end()
+
+        if self.bonus == 'rnd':
+            # Normalize the observation
+            total_next_obs = np.vstack(total_next_obs)
+            self.obs_rms.update(total_next_obs)
 
         return True
 
