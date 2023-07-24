@@ -29,29 +29,15 @@ class MuJoCoStateEncoder(nn.Module):
         self.state_encoder.apply(initialize_weights)
 
     def forward(self, obs):
-        # # Preprocess the observation
-        # obs = np.asarray(obs)
-        # obs = torch.FloatTensor(obs).to(self.device)
-
-        # # Expand dim
-        # obs = torch.unsqueeze(obs, 0)
-        # ret = self.state_encoder(obs)
-        # ret = torch.squeeze(ret, 0)
-
-        # return ret
-
         x = obs
         state_embedding = self.state_encoder(torch.Tensor(x).to(self.device))
-
         return state_embedding
         
         
     def eval(self, obs):
-        # Preprocess the observation
         obs = np.asarray(obs)
         obs = torch.FloatTensor(obs).to(self.device)
 
-        # Expand dim
         obs = torch.unsqueeze(obs, 0)
         ret = self.state_encoder(obs)
         ret = torch.squeeze(ret, 0)
@@ -93,14 +79,12 @@ class RNDModel(nn.Module):
             nn.ReLU(),
             nn.Linear(128, output_size)
         )
-
-        # Initialize weights    
+ 
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
                 init.orthogonal_(m.weight, np.sqrt(2))
                 m.bias.data.zero_()
 
-        # Set target parameters as untrainable
         for param in self.target.parameters():
             param.requires_grad = False
 
@@ -115,5 +99,4 @@ class RNDModel(nn.Module):
         target_next_feature = self.target(next_obs)
         predict_next_feature = self.predictor(next_obs)
         intrinsic_reward = (target_next_feature - predict_next_feature).pow(2).sum(1) / 2
-
         return intrinsic_reward.data.cpu().numpy()
