@@ -10,6 +10,8 @@ from OnPolicyAlgorithm import OnPolicyAlgorithm
 from stable_baselines3.common.policies import ActorCriticCnnPolicy, ActorCriticPolicy, BasePolicy, MultiInputActorCriticPolicy
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
 from stable_baselines3.common.utils import explained_variance, get_schedule_fn
+from models import MuJoCoStateEncoder, MuJoCoInverseDynamicNet, RNDModel
+from utils import RunningMeanStd
 
 SelfPPO = TypeVar("SelfPPO", bound="PPO")
 
@@ -111,6 +113,36 @@ class PPO(OnPolicyAlgorithm):
         self.normalize_advantage = normalize_advantage
         self.target_kl = target_kl
 
+        self.bonus = bonus
+        self.bonus_scale = bonus_scale
+
+        if self.bonus == 'e3b':
+            # init e3b bonus related
+            self.feature_extractor = MuJoCoStateEncoder(self.device).to(self.device)
+            self.feature_extractor_optimizer = th.optim.Adam(
+                self.feature_extractor.parameters(), 
+                lr=1e-3)
+            self.lamb = 1e-1
+            self.feat_sz = 500
+            self.inv_cov = th.mul(th.eye(self.feat_sz), 1.0/self.lamb)
+            self.cov = th.mul(th.eye(self.feat_sz), self.lamb)
+            self.rank1_update = False
+            self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
+            self.inverse_net_optimizer = th.optim.Adam(
+                self.inverse_net.parameters(), 
+                lr=1e-3)
+
+        elif self.bonus == 'rnd':
+            # init rnd bonus related
+            obs_shape = self.observation_space.shape
+            self.obs_rms = RunningMeanStd(shape = obs_shape)
+
+            input_dim, output_dim = obs_shape[0], 64
+            self.rnd_model = RNDModel(self.device, input_dim, output_dim).to(self.device)
+            self.rnd_optimizer = th.optim.Adam(
+                self.rnd_model.parameters(), 
+                lr=1e-3)
+
         if _init_setup_model:
             self._setup_model()
 
@@ -200,7 +232,7 @@ class PPO(OnPolicyAlgorithm):
                     new_observations = rollout_data.observations[1:]
                     predict_next_state_feature, target_next_state_feature = self.rnd_model(new_observations)
                     forward_loss = F.mse_loss(predict_next_state_feature, target_next_state_feature.detach())
-                    forward_losses.append(forward_losses.item())
+                    forward_losses.append(np.mean(forward_losses))
                     loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + forward_loss
                 
                 else:
@@ -218,14 +250,21 @@ class PPO(OnPolicyAlgorithm):
                     break
 
                 self.policy.optimizer.zero_grad()
-                self.feature_extractor_optimizer.zero_grad()
-                self.inverse_net_optimizer.zero_grad()
+
+                if self.bonus == 'e3b':
+                    self.feature_extractor_optimizer.zero_grad()
+                    self.inverse_net_optimizer.zero_grad()
+                elif self.bonus == 'rnd':
+                    self.rnd_optimizer.zero_grad()
                 loss.backward()
 
                 th.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
                 self.policy.optimizer.step()
-                self.feature_extractor_optimizer.step()
-                self.inverse_net_optimizer.step()
+                if self.bonus == 'e3b':
+                    self.feature_extractor_optimizer.step()
+                    self.inverse_net_optimizer.step()
+                elif self.bonus == 'rnd':
+                    self.rnd_optimizer.step()
 
             if not continue_training:
                 break
