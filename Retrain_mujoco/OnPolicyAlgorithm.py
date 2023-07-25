@@ -70,10 +70,11 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.rollout_buffer = None
         self.bonus = bonus
         self.bonus_scale = bonus_scale
+        obs_shape = self.observation_space.shape
 
         if self.bonus == 'e3b':
             # init e3b bonus related
-            self.feature_extractor = MuJoCoStateEncoder(self.device).to(self.device)
+            self.feature_extractor = MuJoCoStateEncoder(device=self.device, input_dim=obs_shape[0]).to(self.device)
             self.feature_extractor_optimizer = th.optim.Adam(
                 self.feature_extractor.parameters(), 
                 lr=1e-3)
@@ -86,14 +87,15 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.inverse_net_optimizer = th.optim.Adam(
                 self.inverse_net.parameters(), 
                 lr=1e-3)
+            self.e3b_bonuses = []
 
         elif self.bonus == 'rnd':
             # init rnd bonus related
-            obs_shape = self.observation_space.shape
-            self.obs_rms = RunningMeanStd(shape = obs_shape)
-
             input_dim, output_dim = obs_shape[0], 64
             self.rnd_model = RNDModel(self.device, input_dim, output_dim).to(self.device)
+            self.rnd_optimizer = th.optim.Adam(
+                self.rnd_model.parameters(), 
+                lr=1e-3)
 
         if _init_setup_model:
             self._setup_model()
@@ -140,7 +142,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.policy.reset_noise(env.num_envs)
 
         callback.on_rollout_start()
-        total_next_obs = []
         bonuses = []
 
 
@@ -163,28 +164,23 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 # add elliptical bonus
                 for i in range(len(new_obs)):
                     feature = self.feature_extractor(new_obs[i]).squeeze().detach().cpu()
-
-                    if self.rank1_update:
-                        u = th.mv(self.inv_cov, feature)
-                        bonus = th.dot(feature, u).numpy()
-                        outer_product_buffer = th.matmul(u, u.T)
-                        th.add(self.inv_cov, outer_product_buffer, alpha=-(1./(1. + bonus)), out=self.inv_cov) 
-                    else:
-                        self.cov += th.outer(feature, feature) 
-                        self.inv_cov = th.inverse(self.cov)
-                        u = th.mv(self.inv_cov, feature)
-                        bonus = th.dot(feature, u).numpy()
+                    self.cov += th.outer(feature, feature) 
+                    u = th.mv(self.inv_cov, feature)
+                    bonus = th.dot(feature, u).numpy()
+                    if len(self.e3b_bonuses) > 0:
+                        bonuses_std = np.std(self.e3b_bonuses)
+                        if bonuses_std > 0:
+                            bonus /= bonuses_std
+                    self.e3b_bonuses.append(bonuses)
                     bonuses.append(bonus)
                     rewards[i] += self.bonus_scale * bonus
             
             elif self.bonus == 'rnd':
-                total_next_obs.append(new_obs)
                 # add rnd bonus
-                new_norm_obs =  ((new_obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var)).clip(-5, 5)
-                int_rewards = self.rnd_model.compute_bonus(new_norm_obs)
-                rnd_reward = (int_rewards - np.min(int_rewards)) / (np.max(int_rewards) - np.min(int_rewards) + 1e-11)
-                bonuses.append(np.mean(int_rewards))
-                rewards = rewards + self.bonus_scale * int_rewards
+                int_rewards = self.rnd_model.compute_bonus(new_obs)
+                rnd_rewards = (int_rewards - np.min(int_rewards)) / (np.max(int_rewards) - np.min(int_rewards) + 1e-11)
+                bonuses.append(np.mean(rnd_rewards))
+                rewards = rewards + self.bonus_scale * rnd_rewards
 
             self.num_timesteps += env.num_envs
 
@@ -214,6 +210,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self._last_obs = new_obs
             self._last_episode_starts = dones
 
+
+
         with th.no_grad():
             values = self.policy.predict_values(obs_as_tensor(new_obs, self.device))
 
@@ -221,10 +219,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         callback.on_rollout_end()
 
-        if self.bonus == 'rnd':
-            # Normalize the observation
-            total_next_obs = np.vstack(total_next_obs)
-            self.obs_rms.update(total_next_obs)
+        if self.bonus == 'e3b':
+            self.inv_cov = th.inverse(self.cov)
 
         return True, bonuses
 

@@ -2,6 +2,7 @@ import gym
 import numpy as np
 import torch
 from stable_baselines3 import PPO
+import pickle
 
 class Traj:
     def __init__(self):
@@ -21,10 +22,14 @@ class Traj:
         self.reward = reward
 
 
-def gen_one_traj(env, seed, agent_path, masknet_path):
+def gen_one_traj(env, seed, agent_path, masknet_path, vec_norm_path):
     traj = Traj()
     model = PPO.load(masknet_path)
     base_model = PPO.load(agent_path)
+
+    if vec_norm_path != None:
+        with open(vec_norm_path, "rb") as file_handler:
+            vec_normalize = pickle.load(file_handler)
 
     reward = 0
     mask_num = 0
@@ -37,7 +42,8 @@ def gen_one_traj(env, seed, agent_path, masknet_path):
     obs = env.reset()
 
     while True:
-
+        if vec_norm_path != None:
+            obs = np.clip((obs - vec_normalize.obs_rms.mean) / np.sqrt(vec_normalize.obs_rms.var + vec_normalize.epsilon), - vec_normalize.clip_obs, vec_normalize.clip_obs).astype(np.float32)
         action, _states = model.predict(obs, deterministic=True)
         base_action, _states = base_model.predict(obs, deterministic=True)
         obs, vectorized_env = model.policy.obs_to_tensor(obs)

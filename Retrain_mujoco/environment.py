@@ -10,7 +10,7 @@ from utils import gen_one_traj
 
 class RetrainEnv(Wrapper):
 
-    def __init__(self, env, go_prob, agent_path, masknet_path, rand_sampling=False):
+    def __init__(self, env, go_prob, agent_path, masknet_path, rand_sampling=False, vec_norm_path=None):
         Wrapper.__init__(self, env)
         self.env = env
         self.seed = 0
@@ -20,6 +20,7 @@ class RetrainEnv(Wrapper):
         self.flag = False
         self.agent_path = agent_path
         self.masknet_path = masknet_path
+        self.vec_norm_path = vec_norm_path
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
@@ -34,7 +35,7 @@ class RetrainEnv(Wrapper):
     def reset(self):
         self.flag = False
         self.seed += 1
-        traj = gen_one_traj(self.env, self.seed, self.agent_path, self.masknet_path)
+        traj = gen_one_traj(self.env, self.seed, self.agent_path, self.masknet_path, self.vec_norm_path)
 
         if np.random.rand() > self.p:
             if self.random_sampling:
@@ -52,7 +53,7 @@ class RetrainEnv(Wrapper):
 
 
 
-def make_retrain_env(env_name, go_prob, agent_path, masknet_path, rand_sampling=False):
+def make_retrain_env(env_name, go_prob, agent_path, masknet_path, rand_sampling=False, vec_norm_path=None):
     env = gym.make(env_name)
-    return RetrainEnv(env, go_prob, agent_path, masknet_path, rand_sampling=rand_sampling)
+    return RetrainEnv(env, go_prob, agent_path, masknet_path, rand_sampling, vec_norm_path)
 
