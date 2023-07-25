@@ -399,6 +399,7 @@ class BaseAlgorithm(ABC):
         custom_objects: Optional[Dict[str, Any]] = None,
         print_system_info: bool = False,
         force_reset: bool = True,
+        seed: Optional[int] = None,
         **kwargs,
     ) -> SelfBaseAlgorithm:
         
@@ -443,6 +444,7 @@ class BaseAlgorithm(ABC):
             bonus=bonus,
             bonus_scale=bonus_scale,
             device=device,
+            seed=seed,
             _init_setup_model=False,  
         )
 

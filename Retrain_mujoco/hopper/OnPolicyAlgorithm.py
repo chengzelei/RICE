@@ -182,6 +182,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 # add rnd bonus
                 new_norm_obs =  ((new_obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var)).clip(-5, 5)
                 int_rewards = self.rnd_model.compute_bonus(new_norm_obs)
+                rnd_reward = (int_rewards - np.min(int_rewards)) / (np.max(int_rewards) - np.min(int_rewards) + 1e-11)
                 bonuses.append(np.mean(int_rewards))
                 rewards = rewards + self.bonus_scale * int_rewards
 
