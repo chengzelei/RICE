@@ -1,6 +1,8 @@
-#!/bin/bash  
-
-python -u retrain.py --n_envs 10\
-                    --seed 2\
-                    --bonus_scale 1e-2\
-                    --go_prob 0.8
+python -u retrain.py --env "Hopper-v3"\
+                     --agent_path "/home/zck7060/Retrain_mujoco/hopper/baseline/weak_tmp/best_model/best_model"\
+                     --masknet_path "/home/zck7060/Retrain_mujoco/hopper/masknet/weak_models/best_model/best_model"\
+                     --vec_norm_path None\
+                     --n_envs 20\
+                     --seed 0\
+                     --go_prob 0.5\
+                     --bonus 'rnd'\

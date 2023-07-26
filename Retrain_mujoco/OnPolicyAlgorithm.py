@@ -162,25 +162,25 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             if self.bonus == 'e3b':
                 # add elliptical bonus
-                for i in range(len(new_obs)):
-                    feature = self.feature_extractor(new_obs[i]).squeeze().detach().cpu()
-                    self.cov += th.outer(feature, feature) 
-                    u = th.mv(self.inv_cov, feature)
-                    bonus = th.dot(feature, u).numpy()
-                    if len(self.e3b_bonuses) > 0:
-                        bonuses_std = np.std(self.e3b_bonuses)
-                        if bonuses_std > 0:
-                            bonus /= bonuses_std
-                    self.e3b_bonuses.append(bonuses)
-                    bonuses.append(bonus)
-                    rewards[i] += self.bonus_scale * bonus
+                feature = self.feature_extractor(new_obs).squeeze().detach().cpu()
+                self.cov += th.outer(feature, feature) 
+                u = th.dot(self.inv_cov, feature.mT)
+                bonus = th.dot(feature, u).numpy()
+                bonuses_std = np.std(bonus)
+                bonus /= bonuses_std
+                bonuses.extend(bonus)
+                rewards += self.bonus_scale * bonus
+
             
             elif self.bonus == 'rnd':
                 # add rnd bonus
+                start = time.perf_counter()
                 int_rewards = self.rnd_model.compute_bonus(new_obs)
                 rnd_rewards = (int_rewards - np.min(int_rewards)) / (np.max(int_rewards) - np.min(int_rewards) + 1e-11)
                 bonuses.append(np.mean(rnd_rewards))
                 rewards = rewards + self.bonus_scale * rnd_rewards
+                end = time.perf_counter()
+                print("elapsed time(ms): ", end-start)
 
             self.num_timesteps += env.num_envs
 

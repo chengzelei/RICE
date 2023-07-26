@@ -8,7 +8,7 @@ from callback import CustomCallback
 from stable_baselines3.common.vec_env.vec_monitor import VecMonitor
 from stable_baselines3.common.callbacks import EvalCallback, CallbackList
 from stable_baselines3.common.vec_env.vec_normalize import VecNormalize
-
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
 ##################
@@ -16,7 +16,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 ##################
 parser = argparse.ArgumentParser()
 # game env
-parser.add_argument("--env", type=str, default="Walker2d-v3")
+parser.add_argument("--env", type=str, default="Hopper-v3")
 # number of game environments
 parser.add_argument("--n_envs", type=int, default=20)
 # seed
@@ -26,15 +26,15 @@ parser.add_argument("--log_path", type=str, default="retrain_log/")
 # optimal or not
 parser.add_argument("--optimal", type=str, default="sub_optimal")
 # target agent path
-parser.add_argument("--agent_path", type=str, default="/home/zck7060/Retrain_mujoco/walker2d/baseline/weak_models/best_model/best_model")
+parser.add_argument("--agent_path", type=str, default="/home/zck7060/Retrain_mujoco/hopper/baseline/weak_tmp/best_model/best_model")
 # masknet path
-parser.add_argument("--masknet_path", type=str, default="/home/zck7060/Retrain_mujoco/walker2d/masknet/weak_models/best_model/best_model")
+parser.add_argument("--masknet_path", type=str, default="/home/zck7060/Retrain_mujoco/hopper/masknet/weak_models/best_model/best_model")
 # vector normalization path
-parser.add_argument("--vec_norm_path", type=str, default="/home/zck7060/Retrain_mujoco/walker2d/baseline/weak_models/best_model/vec_normalize.pkl")
+parser.add_argument("--vec_norm_path")
 # tensorboard path
 parser.add_argument("--tensorboard_path", type=str, default="tensorboards/")
 # bonus scheme
-parser.add_argument("--bonus", type=str, default='e3b')
+parser.add_argument("--bonus", type=str, default='None')
 # bonus scale
 parser.add_argument("--bonus_scale", type=float, default=1e-2)
 # probability of go-explore
@@ -57,6 +57,7 @@ if not os.path.exists(log_path):
 
 if not os.path.exists(tensorboard_path):
     os.makedirs(tensorboard_path)
+
 
 
 norm_games = ["HalfCheetah-v3", "Walker2d-v3"]

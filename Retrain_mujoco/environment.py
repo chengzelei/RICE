@@ -10,9 +10,10 @@ from utils import gen_one_traj
 
 class RetrainEnv(Wrapper):
 
-    def __init__(self, env, go_prob, agent_path, masknet_path, rand_sampling=False, vec_norm_path=None):
+    def __init__(self, env, env_name, go_prob, agent_path, masknet_path, rand_sampling=False, vec_norm_path=None):
         Wrapper.__init__(self, env)
         self.env = env
+        self.env_name = env_name
         self.seed = 0
         self.random_sampling = rand_sampling
         self.p = go_prob
@@ -46,14 +47,26 @@ class RetrainEnv(Wrapper):
             start_idx = 0
         self.init_reward = traj.reward_seq[start_idx]
         self.env.sim.set_state(traj.state_seq[start_idx])
-        position = self.env.sim.data.qpos.flat.copy()[1:]
-        velocity = self.env.sim.data.qvel.flat.copy()
-        obs = np.concatenate((position, velocity)).ravel()
+        if self.env_name == "Hopper-v3":
+            position = self.env.sim.data.qpos.flat.copy()[1:]
+            velocity = self.env.sim.data.qvel.flat.copy()
+            obs = np.concatenate((position, velocity)).ravel()
+        elif self.env_name == "Reacher-v2":
+            theta = self.env.sim.data.qpos.flat[:2]
+            obs = np.concatenate(
+            [
+                np.cos(theta),
+                np.sin(theta),
+                self.env.sim.data.qpos.flat[2:],
+                self.env.sim.data.qvel.flat[:2],
+                self.env.get_body_com("fingertip") - self.env.get_body_com("target"),
+            ])
+
         return obs
 
 
 
 def make_retrain_env(env_name, go_prob, agent_path, masknet_path, rand_sampling=False, vec_norm_path=None):
     env = gym.make(env_name)
-    return RetrainEnv(env, go_prob, agent_path, masknet_path, rand_sampling, vec_norm_path)
+    return RetrainEnv(env, env_name, go_prob, agent_path, masknet_path, rand_sampling, vec_norm_path)
 

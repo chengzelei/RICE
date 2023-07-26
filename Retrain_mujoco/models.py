@@ -18,7 +18,7 @@ def initialize_weights(module):
            module.bias.data.zero_()
 
 class MuJoCoStateEncoder(nn.Module):
-    def __init__(self, device, input_dim=11, hiddens=[500,500]):
+    def __init__(self, device, input_dim, hiddens=[500,500]):
 
         super(MuJoCoStateEncoder, self).__init__()
         self.device = device
