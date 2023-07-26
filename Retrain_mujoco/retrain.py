@@ -49,7 +49,7 @@ parser.add_argument("--eval_freq", type=int, default=100)
 parser.add_argument("--check_freq", type=int, default=100)
 args = parser.parse_args()
 
-log_path = args.log_path + args.env + '/' + args.optimal + '/' + args.bonus + '/' + 'bonus_scale_' + str(args.bonus_scale) + '/' + 'p_' + str(args.go_prob) + '/seed' + str(args.seed) + '/'
+log_path = args.log_path + args.env + '/' + args.optimal + '/' + args.bonus + '/' + 'bonus_scale_' + str(args.bonus_scale) + '/' + 'p_' + str(args.go_prob) + '/seed_' + str(args.seed) + '/'
 tensorboard_path = args.tensorboard_path + args.env + '/' + args.optimal + '/' + args.bonus + '/' + 'bonus_scale_' + str(args.bonus_scale) + '/' + 'p_' + str(args.go_prob) + '/seed_' + str(args.seed) + '/'
 
 if not os.path.exists(log_path):
