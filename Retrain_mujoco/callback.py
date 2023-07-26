@@ -27,7 +27,7 @@ class CustomCallback(BaseCallback):
     def _on_step(self) -> bool:
         if self.n_calls % self.check_freq == 0:
           x, y = ts2xy(load_results(self.log_dir), "timesteps")
-          if len(y) > 100:
+          if len(x)>0 and len(y) > 100:
               mean_reward = np.mean(y[-100:])
               self.logger.record("train/mean_reward", float(mean_reward))
         return True

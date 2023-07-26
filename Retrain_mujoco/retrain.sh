@@ -5,4 +5,4 @@ python -u retrain.py --env "Hopper-v3"\
                      --n_envs 20\
                      --seed 0\
                      --go_prob 0.5\
-                     --bonus 'rnd'\
+                     --bonus 'e3b'

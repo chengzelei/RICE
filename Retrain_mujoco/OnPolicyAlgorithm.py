@@ -162,25 +162,26 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             if self.bonus == 'e3b':
                 # add elliptical bonus
+                start = time.time()
                 feature = self.feature_extractor(new_obs).squeeze().detach().cpu()
-                self.cov += th.outer(feature, feature) 
-                u = th.dot(self.inv_cov, feature.mT)
-                bonus = th.dot(feature, u).numpy()
+                self.cov += th.mm(feature.mT, feature) 
+                u = th.mm(self.inv_cov, feature.mT)
+                bonus = np.copy(th.mm(feature, u).numpy().diagonal())
                 bonuses_std = np.std(bonus)
                 bonus /= bonuses_std
                 bonuses.extend(bonus)
                 rewards += self.bonus_scale * bonus
+                end = time.time()
+                print("elapsed time(s): ", end-start)
+                
 
             
             elif self.bonus == 'rnd':
                 # add rnd bonus
-                start = time.perf_counter()
                 int_rewards = self.rnd_model.compute_bonus(new_obs)
                 rnd_rewards = (int_rewards - np.min(int_rewards)) / (np.max(int_rewards) - np.min(int_rewards) + 1e-11)
                 bonuses.append(np.mean(rnd_rewards))
                 rewards = rewards + self.bonus_scale * rnd_rewards
-                end = time.perf_counter()
-                print("elapsed time(ms): ", end-start)
 
             self.num_timesteps += env.num_envs
 
@@ -219,9 +220,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
         callback.on_rollout_end()
 
-        if self.bonus == 'e3b':
-            self.inv_cov = th.inverse(self.cov)
-
         return True, bonuses
 
     def train(self) -> None:
@@ -255,6 +253,9 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             if continue_training is False:
                 break
 
+            if self.bonus == 'e3b':
+                self.inv_cov = th.inverse(self.cov)
+                
             iteration += 1
             self._update_current_progress_remaining(self.num_timesteps, total_timesteps)
 

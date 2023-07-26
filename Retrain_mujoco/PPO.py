@@ -271,6 +271,7 @@ class PPO(OnPolicyAlgorithm):
         reset_num_timesteps: bool = True,
         progress_bar: bool = False,
     ) -> SelfPPO:
+        print("current bonus method", self.bonus)
         return super().learn(
             total_timesteps=total_timesteps,
             callback=callback,
