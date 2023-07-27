@@ -162,7 +162,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             if self.bonus == 'e3b':
                 # add elliptical bonus
-                start = time.time()
                 feature = self.feature_extractor(new_obs).squeeze().detach().cpu()
                 self.cov += th.mm(feature.mT, feature) 
                 u = th.mm(self.inv_cov, feature.mT)
@@ -171,10 +170,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 bonus /= bonuses_std
                 bonuses.extend(bonus)
                 rewards += self.bonus_scale * bonus
-                end = time.time()
-                print("elapsed time(s): ", end-start)
-                
-
+        
             
             elif self.bonus == 'rnd':
                 # add rnd bonus
@@ -255,7 +251,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
 
             if self.bonus == 'e3b':
                 self.inv_cov = th.inverse(self.cov)
-                
+
             iteration += 1
             self._update_current_progress_remaining(self.num_timesteps, total_timesteps)
 
