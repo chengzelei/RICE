@@ -42,7 +42,7 @@ parser.add_argument("--go_prob", type=float, default=0.5)
 # whether sample based on explanation or not
 parser.add_argument("--random_sampling", type=bool, default=False)
 # training steps
-parser.add_argument("--total_steps", type=int, default=1e6)
+parser.add_argument("--total_steps", default=1e7)
 # evaluation frequency
 parser.add_argument("--eval_freq", type=int, default=100)
 # check frequency
@@ -74,8 +74,10 @@ else:
                                                 rand_sampling=args.random_sampling, vec_norm_path=args.vec_norm_path) for _ in range(args.n_envs)])    
     env = VecMonitor(env, log_path)
     env = VecNormalize.load(args.vec_norm_path, env)
+    env.training = False
     eval_env = DummyVecEnv([lambda:gym.make(args.env)])
     eval_env = VecNormalize.load(args.vec_norm_path, eval_env)
+    eval_env.training = False
     eval_env = VecMonitor(eval_env, log_path)
 
 eval_callback = EvalCallback(eval_env, best_model_save_path=log_path + 'best_model',
@@ -89,5 +91,5 @@ model = PPO.load(path=args.agent_path, tensorboard_log=tensorboard_path,\
                  env=env, bonus=args.bonus,\
                  bonus_scale=args.bonus_scale, seed=args.seed)
 
-model.learn(total_timesteps=args.total_steps, callback=callback)
+model.learn(total_timesteps=args.total_steps, callback=eval_callback)
 

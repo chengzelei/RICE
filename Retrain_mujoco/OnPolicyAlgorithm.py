@@ -83,7 +83,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.inv_cov = th.mul(th.eye(self.feat_sz), 1.0/self.lamb)
             self.cov = th.mul(th.eye(self.feat_sz), self.lamb)
             self.rank1_update = False
-            self.inverse_net = MuJoCoInverseDynamicNet(self.device).to(self.device)
+            self.inverse_net = MuJoCoInverseDynamicNet(device=self.device, num_actions=self.action_space.shape[0]).to(self.device)
             self.inverse_net_optimizer = th.optim.Adam(
                 self.inverse_net.parameters(), 
                 lr=1e-3)
@@ -266,7 +266,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 self.logger.record("time/fps", fps)
                 self.logger.record("time/time_elapsed", int(time_elapsed), exclude="tensorboard")
                 self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
-                self.logger.record("rollout/bonus", np.mean(bonuses))
+                if self.bonus == 'e3b' or self.bonus == 'rnd':
+                    self.logger.record("rollout/bonus", np.mean(bonuses))
                 self.logger.dump(step=self.num_timesteps)
 
             self.train()

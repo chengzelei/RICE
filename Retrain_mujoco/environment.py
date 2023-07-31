@@ -36,31 +36,38 @@ class RetrainEnv(Wrapper):
     def reset(self):
         self.flag = False
         self.seed += 1
-        traj = gen_one_traj(self.env, self.seed, self.agent_path, self.masknet_path, self.vec_norm_path)
-
+        
         if np.random.rand() > self.p:
+            traj = gen_one_traj(self.env, self.seed, self.agent_path, self.masknet_path, self.vec_norm_path)
             if self.random_sampling:
                 start_idx = np.random.choice(traj.eps_len)
             else:
                 start_idx = np.argmax(traj.mask_probs)
+
+            self.init_reward = traj.reward_seq[start_idx]
+            self.env.sim.set_state(traj.state_seq[start_idx])
+
+            if self.env_name == "Reacher-v2":
+                theta = self.env.sim.data.qpos.flat[:2]
+                obs = np.concatenate(
+                [
+                    np.cos(theta),
+                    np.sin(theta),
+                    self.env.sim.data.qpos.flat[2:],
+                    self.env.sim.data.qvel.flat[:2],
+                    self.env.get_body_com("fingertip") - self.env.get_body_com("target"),
+                ])
+            elif self.env_name == "HalfCheetah-v3":
+                position = self.env.sim.data.qpos.flat.copy()[1:]
+                velocity = self.env.sim.data.qvel.flat.copy()
+                obs = np.concatenate((position, velocity)).ravel()[0]
+            else:
+                position = self.env.sim.data.qpos.flat.copy()[1:]
+                velocity = self.env.sim.data.qvel.flat.copy()
+                obs = np.concatenate((position, velocity)).ravel()
         else:
-            start_idx = 0
-        self.init_reward = traj.reward_seq[start_idx]
-        self.env.sim.set_state(traj.state_seq[start_idx])
-        if self.env_name == "Hopper-v3":
-            position = self.env.sim.data.qpos.flat.copy()[1:]
-            velocity = self.env.sim.data.qvel.flat.copy()
-            obs = np.concatenate((position, velocity)).ravel()
-        elif self.env_name == "Reacher-v2":
-            theta = self.env.sim.data.qpos.flat[:2]
-            obs = np.concatenate(
-            [
-                np.cos(theta),
-                np.sin(theta),
-                self.env.sim.data.qpos.flat[2:],
-                self.env.sim.data.qvel.flat[:2],
-                self.env.get_body_com("fingertip") - self.env.get_body_com("target"),
-            ])
+            self.env.seed(self.seed)
+            obs = self.env.reset()
 
         return obs
 

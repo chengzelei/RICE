@@ -38,7 +38,7 @@ def gen_one_traj(env, seed, agent_path, masknet_path, vec_norm_path):
     state_seq = []
     reward_seq = []
     mask_probs = []
-    env.seed(seed)
+    # env.seed(seed)
     obs = env.reset()
 
     while True:
