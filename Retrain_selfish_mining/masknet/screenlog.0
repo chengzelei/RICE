@@ -1,0 +1,24 @@
+Method: random, Width: 0.02, Fidelity Score: 4.219050605428146
+Method: trust, Width: 0.02, Fidelity Score: 4.210248805428143
+Method: highlights, Width: 0.02, Fidelity Score: 4.197956605428147
+Method: mask, Width: 0.02, Fidelity Score: 4.189546005428146
+Method: max, Width: 0.02, Fidelity Score: 4.198515405428144
+===========================================
+Method: random, Width: 0.04, Fidelity Score: 3.519369224868197
+Method: trust, Width: 0.04, Fidelity Score: 3.5102142248682004
+Method: highlights, Width: 0.04, Fidelity Score: 3.5087036248682004
+Method: mask, Width: 0.04, Fidelity Score: 3.5015654248682027
+Method: max, Width: 0.04, Fidelity Score: 3.499853024868203
+===========================================
+Method: random, Width: 0.06, Fidelity Score: 3.1018157167600378
+Method: trust, Width: 0.06, Fidelity Score: 3.105742316760035
+Method: highlights, Width: 0.06, Fidelity Score: 3.1023223167600364
+Method: mask, Width: 0.06, Fidelity Score: 3.0739527167600382
+Method: max, Width: 0.06, Fidelity Score: 3.094628716760032
+===========================================
+Method: random, Width: 0.08, Fidelity Score: 2.805484844308254
+Method: trust, Width: 0.08, Fidelity Score: 2.8029944443082515
+Method: highlights, Width: 0.08, Fidelity Score: 2.8023038443082533
+Method: mask, Width: 0.08, Fidelity Score: 2.76628084430826
+Method: max, Width: 0.08, Fidelity Score: 2.7998046443082547
+===========================================
