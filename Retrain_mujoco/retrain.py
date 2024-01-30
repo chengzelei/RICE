@@ -42,7 +42,7 @@ parser.add_argument("--go_prob", type=float, default=0.5)
 # whether sample based on explanation or not
 parser.add_argument("--random_sampling", type=bool, default=False)
 # training steps
-parser.add_argument("--total_steps", default=1e7)
+parser.add_argument("--total_steps", default=1e6)
 # evaluation frequency
 parser.add_argument("--eval_freq", type=int, default=100)
 # check frequency
@@ -85,11 +85,10 @@ eval_callback = EvalCallback(eval_env, best_model_save_path=log_path + 'best_mod
 custom_callback = CustomCallback(check_freq=args.check_freq, log_dir=log_path)
 callback = CallbackList([custom_callback, eval_callback])
 
-#custom_objects = { 'learning_rate': 1e-5}
+custom_objects = { 'learning_rate': 1e-5}
 model = PPO.load(path=args.agent_path, tensorboard_log=tensorboard_path,\
-#                 custom_objects=custom_objects, 
+                 custom_objects=custom_objects, 
                  env=env, bonus=args.bonus,\
                  bonus_scale=args.bonus_scale, seed=args.seed)
 
 model.learn(total_timesteps=args.total_steps, callback=eval_callback)
-
