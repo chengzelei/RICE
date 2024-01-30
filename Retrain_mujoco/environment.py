@@ -76,4 +76,3 @@ class RetrainEnv(Wrapper):
 def make_retrain_env(env_name, go_prob, agent_path, masknet_path, rand_sampling=False, vec_norm_path=None):
     env = gym.make(env_name)
     return RetrainEnv(env, env_name, go_prob, agent_path, masknet_path, rand_sampling, vec_norm_path)
-
