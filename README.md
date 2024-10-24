@@ -18,6 +18,6 @@ The codebase is written with ```python3.7``` and ```Pytorch```. We provide a `re
 ### Basics
 - We implement our methods in four dense/sparse mujoco games and four real-world applications.
   
-- Note that our implementation of the explanation method is based on StateMask\url{https://github.com/nuwuxian/RL-state_mask}.
+- Note that our implementation of the explanation method is based on [StateMask](https://github.com/nuwuxian/RL-state_mask).
 
-- For each game, we provide code for training a mask network and refine the target agent with the explanation.
+- For each game, we provide code for training a mask network and refining the target agent with an explanation.
