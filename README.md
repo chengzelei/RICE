@@ -1,6 +1,6 @@
 # RICE: Breaking Through the Training Bottlenecks of Reinforcement Learning with Explanation
 
-This repo contains the code for the paper ["RICE: Breaking Through the Training Bottlenecks of Reinforcement Learning with Explanation"] (https://proceedings.mlr.press/v235/cheng24j.html)
+This repo contains the code for the paper ["RICE: Breaking Through the Training Bottlenecks of Reinforcement Learning with Explanation"](https://proceedings.mlr.press/v235/cheng24j.html)
 
 Paper citation:
 ```
