@@ -10,3 +10,6 @@ author={Cheng, Zelei and Wu, Xian and Yu, Jiahao and Yang, Sabrina and Wang, Gan
 booktitle={Proc. of ICML},
 year={2024}
 ```
+
+## Requirement
+The codebase is written with ```python3.7``` and ```Pytorch```. We provide a `requirements.txt` for your reference. If you run errors in some programs, install the missing lib via pip install as the error report. 
